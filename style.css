@@ -1,0 +1,184 @@
+@import url(https://fonts.bunny.net/css?family=syne-mono:400);
+
+* {
+  box-sizing: border-box;
+}
+@property --angle {
+  syntax: "<angle>";
+  initial-value: 270deg;
+  inherits: false;
+}
+
+body {
+  background-color: #F0E68C; /* 卡其色背景 */
+  margin: 0;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  font-family: Arial, sans-serif;
+  scroll-behavior: smooth;
+  overflow: hidden;
+  width: 100%;
+  min-height: 100svh;
+  display: grid;
+  place-content: center;
+  background: black;
+  font-family: "Syne Mono", monospace;
+  line-height: 1.5;
+  font-size: 0.9rem;
+  padding: 2rem 1rem;
+}
+
+.section {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  font-size: 2rem;
+}
+
+.buttons {
+  position: fixed;
+  bottom: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 10px;
+}
+
+.buttons button {
+  padding: 15px 30px;
+  font-size: 18px;
+  cursor: pointer;
+  background-color: #8B4513; /* 棕色 */
+  color: white;
+  border: none;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.3);
+  transition: transform 0.2s, background-color 0.2s;
+}
+
+.buttons button:hover {
+  background-color: #A0522D; /* 更亮的棕色 */
+  transform: scale(1.1);
+}
+
+.buttons button:active {
+  transform: scale(0.95);
+}
+
+.background-selector {
+  position: fixed;
+  top: 10px;
+  right: 10px;
+}
+
+.canvas-container {
+  position: relative;
+  width: 90vw; /* 放大電視寬度 */
+  height: 70vh; /* 放大電視高度 */
+  background-color: #333; /* 電視外殼顏色 */
+  border: 20px solid #000; /* 電視邊框 */
+  border-radius: 25px; /* 圓角邊框 */
+  box-shadow: 0 15px 30px rgba(0, 0, 0, 0.5);
+}
+
+.canvas-container::before {
+  content: '';
+  position: absolute;
+  top: -70px; /* 往上移動 */
+  left: 30%;
+  width: 5px;
+  height: 100px; /* 延長天線 */
+  background-color: #000; /* 天線左 */
+}
+
+.canvas-container::after {
+  content: '';
+  position: absolute;
+  top: -70px; /* 往上移動 */
+  right: 30%;
+  width: 5px;
+  height: 100px; /* 延長天線 */
+  background-color: #000; /* 天線右 */
+}
+
+canvas {
+  width: 100%;
+  height: 100%;
+  border: none;
+  border-radius: 10px;
+}
+
+.title {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  color: white;
+  font-size: 8rem; /* 放大兩倍 */
+  font-weight: bold;
+}
+
+.card {
+  --animation-duration: 12s;
+  width: min(100%, 600px);
+  margin-inline: auto;
+  position: relative;
+  display: grid;
+  place-items: center;
+  isolation: isolate;
+}
+.card > p {
+  margin: 0;
+  color: white;
+  font-size: clamp(0.8rem, 2.5vw + 0.04rem, 1rem);
+
+  text-wrap: pretty;
+  border: 1px solid rgba(255 255 255 / 0.5);
+  border-radius: 5px;
+  padding: 1em;
+}
+.card > img {
+  width: 100%;
+  object-fit: cover;
+  mix-blend-mode: difference;
+  filter: drop-shadow(0 0 5px green);
+}
+/* rotating background gradient */
+.card::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  background-image: conic-gradient(
+    from var(--angle),
+    gold,
+    rgb(246, 51, 154),
+    gold
+  );
+  background-position: -100px -200px; /* move center out of view */
+  background-repeat: no-repeat;
+  background-size: 200% 400%;
+
+  filter: blur(90px) opacity(0.7);
+  border-radius: 50%;
+
+  animation-name: neon-rotate;
+  animation-duration: var(--animation-duration);
+  animation-direction: forwards;
+  animation-iteration-count: infinite;
+  animation-timing-function: linear;
+}
+
+@keyframes neon-rotate {
+  from {
+    --angle: 0deg;
+  }
+  to {
+    --angle: 360deg;
+  }
+}

@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Shader Example</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://twgljs.org/dist/4.x/twgl-full.min.js"></script>
+  <style>
+    .canvas-container {
+      position: relative;
+      width: 90vw;
+      height: 90vh;
+      margin: 0 auto;
+      background: #000;
+      border: 10px solid #444;
+      border-radius: 15px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    }
+    .buttons {
+      position: fixed;
+      bottom: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      gap: 10px;
+    }
+    .buttons button {
+      padding: 10px 20px;
+      font-size: 16px;
+      cursor: pointer;
+      background-color: #444;
+      color: white;
+      border: none;
+      border-radius: 5px;
+    }
+    .buttons button:hover {
+      background-color: #666;
+    }
+    .card {
+      text-align: center;
+      color: white;
+      font-size: 1rem;
+    }
+    .card img {
+      max-width: 100%;
+      height: auto;
+    }
+    .card p {
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div class="canvas-container">
+    <div id="tv-screen" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center; color: white; font-size: 2rem; font-weight: bold;">
+      互動程式設計期中報告
+    </div>
+  </div>
+
+  <div class="buttons">
+    <button onclick="document.getElementById('tv-screen').innerHTML='<iframe src=\'https://www.tku.edu.tw\' style=\'width: 100%; height: 100%; border: none;\'></iframe>'">首頁</button>
+    <button onclick="document.getElementById('tv-screen').innerHTML='<iframe src=\'https://lhx517.github.io/240400/\' style=\'width: 100%; height: 100%; border: none;\'></iframe>'">作品</button>
+    <button onclick="document.getElementById('tv-screen').innerHTML='<iframe src=\'https://hackmd.io/@bhI-fl7hRKm3UXyaThZu5A/SJTw_QT0yg\' style=\'width: 100%; height: 100%; border: none;\'></iframe>'">筆記</button>
+    <button onclick="document.getElementById('tv-screen').innerHTML='<div class=\'card\'><img src=\'https://raw.githubusercontent.com/cbolson/assets/refs/heads/main/codepen/goldfish-trans.png\'><p>嗨，我是個正在慢慢認識自己的旅人。 我的 MBTI 是 INFP，一個敏感、細膩、帶著溫柔理想的人。 我喜歡陽光、草原、遼闊的感覺，因為那裡有自由、希望和寬廣的空氣。 在朋友關係裡，我渴望深層連結，但也常懷疑自己是不是太敏感、太多餘。 我正在學習建立溫柔而清晰的邊界，保護自己的情緒空間，讓關係變得更舒服、健康。 跳舞是我生命中重要的一部分，它讓我感覺自己可以用身體說話，在律動裡找回自己。 儘管偶爾會覺得自己和家人之間有點疏遠，儘管有時在價值比較中感到自卑、迷失， 但我沒有放棄思考——什麼才是真正屬於我的意義。 我還在路上，一邊懷疑，一邊努力，一邊尋找一個能安心做自己的地方。 我相信：即使慢、即使迷路，走過的每一段路，都在悄悄編織我的故事。</p></div>'">自我介紹</button>
+  </div>
+
+  <!-- VertexShader code here -->
+  <script id="vertexShader" type="x-shader/x-vertex">
+    #version 300 es
+    precision highp float;
+    in vec4 position;
+    void main() {
+      gl_Position = vec4( position );
+    }
+  </script>
+
+  <!-- FragmentShader code here -->
+  <script id="fragmentShader" type="x-shader/x-fragment">
+    #version 300 es
+    #if __VERSION__ < 130
+    #define TEXTURE2D texture2D
+    #else
+    #define TEXTURE2D texture
+    #endif
+    precision highp float;
+    out vec4 fragColor;
+    uniform vec2 u_resolution;
+    uniform vec4 u_mouse;
+    uniform float u_time;
+    uniform sampler2D iChannel0;
+    uniform sampler2D iChannel1;
+    
+    #define R   u_resolution
+    #define T   u_time
+    #define M   u_mouse
+
+    #define PI          3.1415926
+    #define PI2         6.2831853
+
+    #define mindist 1e-3
+    #define maxdist 15.
+
+    float gx,gxs;
+    mat2 r2(float a){ return mat2(cos(a),sin(a),-sin(a),cos(a)); }
+    vec2 hash2( vec2 p ) {
+      return fract(sin(vec2(dot(p,vec2(54.3,25.7)),dot(p,vec2(87.2,54.1))))*4258.4373);
+    }
+
+    // original voronoi @iq https://iquilezles.org/articles/voronoilines
+    // I tried to modify/optimize to run faster for the height map
+    float voronoi(vec2 x)
+    {
+        float phase = 995.;
+        vec2 n = floor(x), f = fract(x);
+
+        float minDist = 8.;
+        vec2 closestOffset, closestGrid;
+
+        // First pass:
+        for (int j = -1; j <= 1; ++j) {
+            for (int i = -1; i <= 1; ++i) {
+                vec2 g = vec2(i, j);
+                vec2 h = hash2(n + g);
+                vec2 offset = .5 + .5 * sin(h * phase + PI2);
+                vec2 r = g + offset - f;
+                float d = dot(r, r);
+
+                if (d < minDist) {
+                    minDist = d;
+                    closestOffset = r;
+                    closestGrid = g;
+                }
+            }
+        }
+
+        // Precompute values for second pass
+        vec2 bestGrid = n + closestGrid;
+        vec2 bestPoint = closestGrid + (.5 + .5 * sin(hash2(bestGrid) * phase + PI2)) - f;
+
+        float result = 8.;
+
+        // Second pass:
+        for (int j = -2; j <= 2; ++j) {
+            for (int i = -2; i <= 2; ++i) {
+                vec2 g = closestGrid + vec2(i, j);
+                vec2 h = hash2(n + g);
+                vec2 offset = .5 + .5 * sin(h * phase + PI2);
+                vec2 r = g + offset - f;
+
+                // Only check non-matching points
+                vec2 delta = bestPoint - r;
+                if (dot(delta, delta) >mindist) {
+                    vec2 midpoint = .5 * (bestPoint + r);
+                    vec2 dir = normalize(r - bestPoint);
+                    result = min(result, dot(midpoint, dir));
+                }
+            }
+        }
+        gx = result;
+        return result;
+    }
+
+    // Make the height map/scene
+    vec2 map(vec3 p) {
+      vec2 res = vec2(1e5,0);
+      float sw = .35 * sin( p.z ) + .45 * cos( p.x*.5 );
+      float h = -1., w = 1.5, m = .265;
+
+      for (int i = 0; i < 2; i++) 
+        {
+          h += w * voronoi(( p.xz * m ));
+          w *= .5;
+          m *= 2.;
+      }
+        float d2 = p.y -.75+ sw - h;
+        if(d2<res.x) res = vec2(d2,1);
+
+        return res;
+    }
+
+    // Just a normal normal function
+    vec3 normal(vec3 p, float t) {
+        t*=mindist;
+        float d = map(p).x;
+        vec2 e = vec2(t,0);
+        vec3 n = d - vec3(
+            map(p-e.xyy).x,
+            map(p-e.yxy).x,
+            map(p-e.yyx).x
+        );
+        return normalize(n);
+    }
+
+    void main( ) {
+        vec2 F = gl_FragCoord.xy;
+
+        float speed = T*2.;
+        vec2 uv = (2.*F.xy-R.xy)/max(R.x,R.y);
+        vec3 C = vec3(0.);
+        
+        vec3 ro = vec3(0,0,7);
+        vec3 rd = normalize(vec3(uv,-1));
+
+        float x = M.xy == vec2(0) || M.z <0. ? 0. : -(M.y / R.y *.2-.1 ) * PI;
+        float y = M.xy == vec2(0) || M.z <0. ? 0. : -(M.x / R.x *1.-.5 ) * PI;
+        
+        mat2 ry =r2( T * .03 + y ); mat2  rx = r2( -.72 + .15 * sin( T * .2 ) + x);
+
+        ro.zy *= rx, ro.xz *= ry;
+        rd.zy *= rx, rd.xz *= ry;
+        
+        ro.x += speed;
+            
+        float d = 0.,m = 0.;
+        for(int i=0; i<60; i++)
+        {
+          vec2 t = map(ro + rd * d);
+            if(abs(t.x)<mindist||d>maxdist) break;
+            d += t.x;
+            m  = t.y;
+        }
+        gxs=gx;
+        
+        if(d<maxdist){
+          vec3 p = ro + rd * d;
+            vec3 n = normal(p, d);
+            vec3 lpos = vec3(5.+speed,10.,-3.);
+            vec3 l = normalize(lpos-p);
+            float diff = clamp(dot(n,l),0.,1.);
+       
+            //@iq Palette modulation https://iquilezles.org/articles/palettes/
+            float pt = (p.x*.01)+50.;
+            vec3 j = .35 + .45*cos(PI2*pt*(vec3(.99,.98,.95)+vec3(.96,.57,.22))); 
+            
+            
+            // Materials
+            float tx = voronoi(p.xz*5.);//voronoi(p.xz*3.+gxs.);
+            vec3 h = texture(iChannel0,p.xz*.25).rgb;
+                 h = mix(j, h, smoothstep(.005, .1, tx));
+                 h = mix(j, h, smoothstep(.001, .5, gxs+.1));
+                 h = mix(vec3(0), h, smoothstep(.02, .2, gxs+.065));
+                 h = mix(vec3(1), h, smoothstep(.45, .00, gxs));
+            float spec = pow(max(dot(normalize(p-ro),reflect(normalize(lpos),n)),.0),15.);
+
+            C += (diff * h)+spec;     
+        }
+        
+      C = mix( vec3(.15),C,  exp(-.0018*d*d*d));
+        fragColor = vec4(pow(C, vec3(.4545)),1);
+    }
+  </script>
+
+  <script>
+    const woodTexture = "https://assets.codepen.io/163598/texture3.jpg";
+    const stoneTexture = "https://assets.codepen.io/163598/texture4.jpg";
+    const textureList = [stoneTexture, woodTexture];
+
+    // Mouse Class for movements and attaching to DOM
+    class Mouse {
+      constructor(element) {
+        this.element = element || window;
+        this.drag = false;
+        this.x =
+          ~~(document.documentElement.clientWidth, window.innerWidth || 0) / 2;
+        this.y =
+          ~~(document.documentElement.clientHeight, window.innerHeight || 0) / 2;
+        this.getCoordinates = this.getCoordinates.bind(this);
+        this.events = ["mouseenter", "mousemove"];
+        this.events.forEach((eventName) => {
+          this.element.addEventListener(eventName, this.getCoordinates);
+        });
+        this.element.addEventListener("mousedown", () => {
+          this.drag = true;
+        });
+        this.element.addEventListener("mouseup", () => {
+          this.drag = false;
+        });
+        window.addEventListener("resize", this.reset);
+      }
+      reset = () => {
+        this.x =
+          ~~(document.documentElement.clientWidth, window.innerWidth || 0) / 2;
+        this.y =
+          ~~(document.documentElement.clientHeight, window.innerHeight || 0) / 2;
+      };
+      getCoordinates(event) {
+        event.preventDefault();
+        if (this.drag) {
+          this.x = event.pageX;
+          this.y = event.pageY;
+        }
+      }
+    }
+
+    // WEBGL BOOTSTRAP TWGL.js
+    const glcanvas = document.getElementById("canvas");
+    const gl = glcanvas.getContext("webgl2");
+
+    // Fractal code in HTML window - Fragment Shader
+    const programInfo = twgl.createProgramInfo(gl, [
+      "vertexShader",
+      "fragmentShader"
+    ]);
+
+    const arrays = {
+      position: [-1, -1, 0, 1, -1, 0, -1, 1, 0, -1, 1, 0, 1, -1, 0, 1, 1, 0]
+    };
+
+    const bufferInfo = twgl.createBufferInfoFromArrays(gl, arrays);
+    const mouse = new Mouse(glcanvas);
+    let umouse = [gl.canvas.width / 2, gl.canvas.height / 2, 0, 0];
+    let tmouse = umouse;
+
+    // TEXTURE LOADING
+    let texts;
+    const getImage = (url) => {
+      return new Promise((resolve, reject) => {
+        let img = new Image();
+        img.crossOrigin = "anonymous";
+        img.addEventListener("load", (e) => resolve(img));
+        img.addEventListener("error", () => {
+          reject(new Error(`Failed to load image's URL: ${url}`));
+        });
+        img.src = url;
+      });
+    };
+    const loadTexture = (imageList) => {
+      console.log("loading images");
+      let promises = imageList.map((item) => getImage(item));
+
+      Promise.all(promises).then((images) => {
+        const txtImages = images.map((item) => {
+          return { src: item, mag: gl.NEAREST };
+        });
+        texts = twgl.createTextures(gl, {
+          iChannel0: txtImages[0],
+          iChannel1: txtImages[1]
+        });
+        let uniforms = {
+          iChannel0: texts.iChannel0,
+          iChannel1: texts.iChannel1
+        };
+        gl.useProgram(programInfo.program);
+        twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+        twgl.setUniforms(programInfo, uniforms);
+        twgl.drawBufferInfo(gl, bufferInfo);
+      });
+    };
+
+    // RENDER LOOP
+    const render = (time) => {
+      twgl.resizeCanvasToDisplaySize(gl.canvas, 1.0);
+
+      gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
+      let uniforms;
+      const factor = 0.15;
+      umouse = [mouse.x, mouse.y, 0];
+      tmouse[0] = tmouse[0] - (tmouse[0] - umouse[0]) * factor;
+      tmouse[1] = tmouse[1] - (tmouse[1] - umouse[1]) * factor;
+      tmouse[2] = mouse.drag ? 1 : -1;
+
+      uniforms = {
+        u_time: time * 0.001,
+        u_mouse: tmouse,
+        u_resolution: [gl.canvas.width, gl.canvas.height]
+      };
+
+      gl.useProgram(programInfo.program);
+      twgl.setBuffersAndAttributes(gl, programInfo, bufferInfo);
+      twgl.setUniforms(programInfo, uniforms);
+      twgl.drawBufferInfo(gl, bufferInfo);
+
+      requestAnimationFrame(render);
+    };
+
+    // DOM READY
+    window.addEventListener("DOMContentLoaded", (event) => {
+      loadTexture(textureList);
+      requestAnimationFrame(render);
+    });
+  </script>
+</body>
+</html>
